@@ -1,0 +1,15 @@
+services:
+  editor:
+    build: .
+    image: agv-map-editor:local
+    ports:
+      - "8080:8080"
+    volumes:
+      # Keeps edits across `docker compose down`. Remove the volume to start
+      # again from the map supplied with the assignment.
+      - map-data:/data
+    environment:
+      MAP_FILE: /data/map.json
+
+volumes:
+  map-data:
