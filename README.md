@@ -307,3 +307,4 @@ is the part that actually matters.
 - **Rotation is view-only.** It turns the camera, not the map data. Rotating
   coordinates would change which nodes are axis-aligned and so destroy lanes.
 - **No image underlay.** A real floor map would be traced over a site plan.
+##end here 
