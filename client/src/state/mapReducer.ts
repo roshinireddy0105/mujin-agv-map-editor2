@@ -51,7 +51,7 @@ export const initialState: EditorState = {
   selectedIndex: null,
   savedRevision: null,
   savedJson: null,
-  orientationId: 'mapData',
+  orientationId: 'specText',
 };
 
 export function isDirty(state: EditorState): boolean {

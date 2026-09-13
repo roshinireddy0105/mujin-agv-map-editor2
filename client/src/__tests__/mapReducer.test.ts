@@ -256,3 +256,7 @@ describe('orientation', () => {
     expect(isDirty(after)).toBe(false);
   });
 });
+
+it('starts the editor using the assessment compass convention', () => {
+  expect(initialState.orientationId).toBe('specText');
+});

@@ -1,310 +1,230 @@
-# AGV map editor
+# AGV Map Editor
 
-An editor for AGV floor maps: React and TypeScript front end, Express API,
-shipped as a single Docker image built on `debian:bullseye`.
+A warehouse AGV map editor built with React, TypeScript, and an Express REST API. The frontend and backend run in a single Docker container built on `debian:bullseye`.
 
-The map format is the one from the assignment. The example file is included as
-`shared/src/__fixtures__/sample-map.json` and is what the server seeds on first
-start.
+## Submission links
 
----
+- Source repository: https://github.com/roshinireddy0105/mujin-agv-map-editor2
+- Docker Hub: https://hub.docker.com/r/roshinireddy0105/agv-map-editor
+- Image tag used by these instructions: `roshinireddy0105/agv-map-editor:1.0`
 
-## Run it
+The source repository should be private, with access granted to the assessment reviewer. The published image must be accessible to the reviewer and rebuilt after application changes.
 
-### From Docker Hub
+## Run the published Docker image
 
-```bash
-docker run --rm -p 8080:8080 -v agv-map:/data <your-dockerhub-user>/agv-map-editor:1.0.0
+Install and start Docker Desktop, using Linux containers. Port 8080 must be available. Run:
+
+```bat
+docker pull roshinireddy0105/agv-map-editor:1.0
+docker run -d --name agv-editor-review -p 127.0.0.1:8080:8080 -v agv-review-data:/data roshinireddy0105/agv-map-editor:1.0
 ```
 
-Then open <http://localhost:8080>.
+Open http://localhost:8080 in a browser. Node.js is not required on the host when running the Docker image.
 
-The `-v` is optional. Without it the editor works fine, but edits live in the
-container's writable layer and disappear with the container. With it the map
-persists across restarts.
+Inspect the container:
 
-### From source
+```bat
+docker ps
+docker logs agv-editor-review
+curl http://localhost:8080/api/health
+```
 
-```bash
-npm install
+Stop or start the existing container:
+
+```bat
+docker stop agv-editor-review
+docker start agv-editor-review
+```
+
+Run the `docker run` command only when creating a new container. If the name already exists, start that container or use a different name. If port 8080 is occupied, use `-p 127.0.0.1:8081:8080` and open http://localhost:8081 instead.
+
+### Saved map data
+
+The backend saves map JSON to `/data/map.json` inside the container. The named volume `agv-review-data` preserves that file across container restarts and can be reused by a replacement container. The sample map is seeded when the store is first created.
+
+Saved map data is stored by the server, not in browser session storage. Refreshing reloads the saved map; save edits before refreshing. The Dockerfile declares `/data` as a volume. Omitting `-v` creates an anonymous volume, which is not automatically reused by a new container. Use the named volume command above for predictable persistence. Do not remove the volume if you need its saved map.
+
+## Run from source
+
+Install Git and Node.js 20 with npm. Clone the repository using an account with access:
+
+```bat
+git clone https://github.com/roshinireddy0105/mujin-agv-map-editor2.git
+cd mujin-agv-map-editor2
+npm ci
 npm run dev
 ```
 
-`npm run dev` starts the API on `:8080` and Vite on `:5173` with `/api` proxied
-across. Open <http://localhost:5173>.
+These commands assume `package-lock.json` is committed. The API uses port 8080 and Vite uses port 5173, forwarding `/api` requests to the backend. Open http://localhost:5173. Stop any Docker container occupying port 8080 before starting the development server.
 
-### Build the image yourself
+All npm commands below run from the project root, containing the root `package.json`. In Windows PowerShell, use `npm.cmd` instead of `npm` if script execution is blocked.
 
-```bash
-docker build -t agv-map-editor:local .
-docker run --rm -p 8080:8080 agv-map-editor:local
+## Automated tests, type checking, and build
+
+Run these commands individually, stopping if any command fails:
+
+```bat
+npm test
+npm run typecheck
+npm run build
 ```
 
-Or `docker compose up --build`, which wires up the volume for you.
+Run an individual test suite:
 
-The typecheck and the full test suite run inside the image build. A build that
-succeeds is a build whose tests passed.
+```bat
+npm run test --workspace shared
+npm run test --workspace server
+npm run test --workspace client
+```
 
-### Publish the image
+Run backend tests in watch mode:
 
-```bash
+```bat
+npm run test:watch --workspace server
+```
+
+Verification of this updated source reported:
+
+| Suite | Passing tests | Coverage areas |
+| --- | ---: | --- |
+| Shared | 49 | Geometry and map validation |
+| Server | 26 | REST endpoints, validation, revision conflicts, and file persistence |
+| Client | 63 | Inspector, reducer, snapping, and viewport calculations |
+| Total | 138 | Frontend, backend, and shared logic |
+
+Type checking and the frontend/backend production builds also passed. Docker is not available in the editing environment, so the container build and final browser checks must be performed locally. Rerun checks after source changes. These automated results do not replace checking the rendered editor and the final published container.
+
+## Build and publish the Docker image
+
+From the project root with Docker Desktop running:
+
+```bat
+docker build -t roshinireddy0105/agv-map-editor:1.0 .
+```
+
+The Dockerfile runs type checking, automated tests, and production builds in the build stage. The runtime uses an unprivileged user, exposes port 8080, and has an HTTP health check.
+
+Test the newly built image on port 8081, allowing an existing editor on 8080 to keep running:
+
+```bat
+docker run -d --name agv-editor-final-check -p 127.0.0.1:8081:8080 -v agv-final-check-data:/data roshinireddy0105/agv-map-editor:1.0
+curl http://localhost:8081/api/health
+docker logs agv-editor-final-check
+```
+
+Open http://localhost:8081. Complete the manual checks below before publishing. If this test container name already exists, use a new name for the new image; starting an old container does not switch it to a newly built image.
+
+After successful checks, sign in to the Docker Hub account `roshinireddy0105` and publish:
+
+```bat
 docker login
-docker build -t <your-dockerhub-user>/agv-map-editor:1.0.0 .
-docker tag <your-dockerhub-user>/agv-map-editor:1.0.0 <your-dockerhub-user>/agv-map-editor:latest
-docker push <your-dockerhub-user>/agv-map-editor:1.0.0
-docker push <your-dockerhub-user>/agv-map-editor:latest
+docker push roshinireddy0105/agv-map-editor:1.0
+docker buildx imagetools inspect roshinireddy0105/agv-map-editor:1.0
 ```
 
----
+The last command inspects the published manifest and its supported platforms. A normal build publishes the platform built locally; these instructions do not claim a multi-platform image. Rebuilding or pushing a tag does not update containers already running from the older image.
 
-## Test it
+## Manual verification
 
-```bash
-npm test              # shared, server and client
-npm run test:shared   # domain rules: geometry, orientation, validation
-npm run test:server   # API integration tests over supertest
-npm run test:client   # reducer, viewport maths, snapping, Inspector
-npm run typecheck     # tsc --noEmit across all three packages
-```
+1. Open the editor and click **Fit map**. Confirm nodes can be selected and read; zoom in where labels overlap.
+2. Confirm the default assignment orientation in the **Compass** dropdown: North = +X and West = +Y. See the orientation note below.
+3. Edit a node name, save, and refresh. Confirm the saved name remains.
+4. Edit coordinates, QR code, directions, charger, and chute fields. Confirm invalid values receive useful feedback.
+5. Confirm lanes only connect nodes with equal x or equal y; no diagonal lanes are allowed.
+6. Exercise adding/deleting nodes, undo/redo, zoom, rotation, and node dragging.
+7. In browser developer tools, open **Network > Fetch/XHR**. Refresh and save; inspect successful `GET /api/map` and `PUT /api/map` requests.
+8. Restart the test container with `docker restart agv-editor-final-check`, then reload http://localhost:8081 and confirm saved data remains.
+9. Restore any test edits you do not want to keep, and save again.
 
-Watch mode is `npm run test:watch --workspace <shared|server|client>`.
+## Map format and movement
 
-What the suites cover:
+The document contains `map.maxNeighborDistance` and a `map.nodes` array. The sample is included at `shared/src/__fixtures__/sample-map.json`.
 
-| Suite | Focus |
+| Field | Meaning |
 | --- | --- |
-| `shared` | Edge/neighbour rules including lane occlusion, every validation rule, and the orientation question below |
-| `server` | Each endpoint, 422 on an incoherent map, 409 on a stale revision, atomic file writes, seeding, corrupt-file handling |
-| `client` | Reducer (undo/redo, drag coalescing, dirty tracking), pan/zoom/rotate maths, axis snapping, Inspector interactions |
+| `x`, `y` | Integer coordinates in millimeters |
+| `code` | Integer floor QR code |
+| `directions` | Optional list of outbound travel directions |
+| `name` | Optional readable node name |
+| `charger.direction` | Charger plug direction; an AGV backs in by moving in the opposite direction |
+| `chute.direction` | Payload ejection travel direction |
 
----
+The implementation derives neighboring lanes from aligned nodes within `maxNeighborDistance`, with intervening nodes preventing direct connections across them. Snapping helps dragged nodes stay aligned with nearby rows and columns.
 
-## The orientation discrepancy
+### Orientation
 
-**The assignment text and the sample map disagree about which way the compass
-points, and the editor follows the data.**
+The frontend and API default to the assessment convention: **North = +X and West = +Y** (`specText`). North renders upward on screen. The alternate **North = +Y and East = +X** interpretation (`mapData`) remains available through the Compass dropdown for comparison.
 
-The brief says North is +X and West is +Y. Scoring all eight possible
-compass-to-axis mappings against the sample map's 73 direction annotations:
+Under the required convention, some directions in the supplied sample do not point to neighboring nodes. The editor reports these as warnings; it preserves the sample data and allows saving. Warnings do not redefine the required axes.
 
-| Mapping | Directions pointing at nothing | Undrivable lanes | Mean nodes reachable |
-| --- | --- | --- | --- |
-| North = +X, West = +Y (as written) | 20 | 31 | 2.7 / 58 |
-| **North = +Y, East = +X** | **0** | 15 | **42.8 / 58** |
+Validating endpoints accept `?orientation=specText` or `?orientation=mapData`. When omitted, the orientation is `specText`.
 
-Two further checks agree independently:
+## REST API
 
-- Both chargers (`CHRG1`, plug West; `CHRG2`, plug South) have a neighbour on
-  the plug side — which is where an AGV must reverse in from. Under the literal
-  reading neither does.
-- The one chute ejects its payload onto empty floor rather than into an
-  occupied node.
-
-So `North = +Y` is the default. The literal reading is still available in the
-**Compass** dropdown in the header and is covered by tests, so if the brief's
-wording is authoritative for a given fleet, it is one click away and nothing
-else in the codebase changes. `shared/src/orientation.ts` holds both, and every
-rendering component is written against a screen-space invariant (North is
-always up) so none of them know which is active.
-
-If this is a deliberate part of the exercise, the answer is: the data wins, but
-say so out loud rather than silently picking one.
-
----
-
-## Editor
-
-| Action | How |
-| --- | --- |
-| Pan | Drag the background |
-| Zoom | Scroll or trackpad pinch, anchored at the cursor |
-| Rotate | `↺` / `↻` in the header, 15° a step |
-| Frame everything | <kbd>F</kbd> |
-| Move a node | Drag it; it snaps onto nearby rows and columns |
-| Add a node | **Add node**, then click the floor |
-| Delete | Select, then <kbd>Delete</kbd> |
-| Undo / redo | <kbd>Cmd/Ctrl</kbd>+<kbd>Z</kbd>, <kbd>Shift</kbd> to redo |
-| Save | <kbd>Cmd/Ctrl</kbd>+<kbd>S</kbd> |
-
-**Snapping is a correctness feature, not a convenience.** Two nodes are only
-connectable when an axis matches *exactly*, so a drag that lands 3mm off does
-not create a slightly crooked lane — it silently destroys the lane. Each axis
-snaps independently, which is what lets you slide a node along its own aisle
-while staying aligned to it. The pull radius is a constant 12 screen pixels
-converted to millimetres at the current zoom, so it feels the same however far
-out you are.
-
-**Lane rendering encodes drivability.** A lane drivable both ways is solid, a
-one-way lane is drawn darker, and a lane no AGV can drive in either direction
-is faint and dashed — it is adjacency without being a route. The sample map has
-15 of those, which is why they are a warning rather than an error.
-
----
-
-## API
-
-Base path `/api`. All bodies are JSON. `?orientation=mapData|specText` is
-accepted on the validating endpoints and defaults to `mapData`.
-
-| Method | Path | Purpose |
+| Method | Endpoint | Purpose |
 | --- | --- | --- |
-| `GET` | `/health` | Liveness, used by the container healthcheck |
-| `GET` | `/map` | Current map plus its revision; `ETag` carries the revision |
-| `PUT` | `/map` | Replace the map |
-| `POST` | `/map/validate` | Check a map without saving; returns issues and lane statistics |
-| `GET` | `/map/download` | The map as an attachment, in the assignment's file format |
-| `POST` | `/map/reset` | Restore the map supplied with the assignment |
+| GET | `/api/health` | Health check |
+| GET | `/api/map` | Load the map and revision; ETag contains the revision |
+| PUT | `/api/map` | Validate and replace the saved map |
+| POST | `/api/map/validate` | Validate without saving |
+| GET | `/api/map/download` | Download map JSON |
+| POST | `/api/map/reset` | Replace saved data with the sample map |
 
-```bash
-curl -s localhost:8080/api/map | head -c 200
-curl -s -X PUT localhost:8080/api/map \
-  -H 'Content-Type: application/json' \
-  -H 'If-Match: "<revision>"' \
-  -d '{"map":{"maxNeighborDistance":1500,"nodes":[{"x":0,"y":0,"code":1}]}}'
+Read-only examples for Windows CMD:
+
+```bat
+curl http://localhost:8080/api/health
+curl http://localhost:8080/api/map
 ```
 
-### Why `PUT` on the whole document
+Saves use the whole map document because changing a node can affect neighboring lanes. Revision values can be sent using `If-Match` or a `revision` body field. A stale revision produces `409`; omitting a revision allows an unconditional save. Malformed JSON produces `400`, and invalid map data produces `422`. Successful reads and saves produce `200`. Unknown API routes return `404`.
 
-A map is edited as a whole. Moving one node changes which lanes exist
-*elsewhere* — its old neighbours may now be within range of each other, and its
-new position may occlude a lane it has nothing to do with. There is no coherent
-single-node patch, so `PATCH /map/nodes/:id` would be an API that lies about its
-own blast radius. One `PUT`, validated as a unit.
+Map validation is shared between client and server. Structural problems, invalid integer fields, duplicate coordinates, and disallowed duplicate QR codes block saving. Connectivity and docking concerns can produce warnings. File writes use a temporary file followed by rename to avoid partially written map JSON.
 
-### Concurrency
+## Project layout
 
-`revision` is a SHA-256 of the canonical map JSON, truncated to 12 hex
-characters — not a counter. Content-derived means it survives a server restart,
-and two clients that save byte-identical maps never conflict over a write with
-no effect.
-
-Send it back as `If-Match` or as `revision` in the body and the write becomes
-conditional: `409` with both revisions if the map moved underneath you, and the
-editor offers to load the server's version. Send neither and the write is
-unconditional, which is what a first-time import wants.
-
-### Status codes
-
-| Code | When |
+| Folder | Purpose |
 | --- | --- |
-| `200` | Read or save succeeded. A save also returns any warnings |
-| `400` | Body was not JSON |
-| `409` | Supplied revision no longer matches |
-| `422` | Map failed validation; nothing was written |
+| `shared/` | Map types, orientation, geometry, validation, and sample data |
+| `server/` | Express API and map persistence |
+| `client/` | React editor, state, and SVG map rendering |
 
-Errors always carry the shared issue list, so the editor can point at the
-offending node rather than showing a bare "save failed".
+## Other limitations
 
----
+- Concurrent edits are detected through revision checks but are not merged automatically.
+- Saves replace the complete map; large maps may require more incremental processing.
+- There is no authentication; anyone with network access to the API can edit the map. The provided Docker commands bind to the local host.
+- Rotation changes the view rather than the stored map coordinates.
+- Labels may overlap when zoomed out; use zoom and pan to inspect dense areas.
+- There is no floor-plan image underlay.
 
-## Validation
+## Submission checklist
 
-`shared/src/validate.ts` is the single source of truth. The client runs it on
-every edit and the server enforces it on save, so the editor can never show a
-map as clean that the API would then reject.
+- Confirm the editor opens with North = +X and West = +Y.
+- Commit all source files, tests, the lockfile, Dockerfile, and this README to the private repository.
+- Grant the assessment reviewer repository access using their confirmed GitHub identity.
+- Run tests, type checking, and production build on the final source.
+- Build and manually check the final Docker image, then push it to Docker Hub.
+- Include the private repository link, Docker Hub link, exact image tag, and this README in the assessment email reply.
+- A separately hosted public website is not required; reviewers can run the supplied Docker image locally.
 
-**Errors** block a save:
+## Commit and push the updated files
 
-| Code | Rule |
-| --- | --- |
-| `E000`–`E006` | Structural: shape, types, unknown compass headings, malformed charger/chute |
-| `E010` | `maxNeighborDistance` must be a positive whole number |
-| `E011`, `E012` | Coordinates and codes must be whole numbers |
-| `E013` | Two nodes in the same place |
-| `E014` | A QR code reused (0 may repeat — the sample map uses it for "unassigned") |
+In the existing repository checkout, review the changes first:
 
-**Warnings** never block a save, because a half-built map legitimately has
-dangling lanes while you work on it:
-
-| Code | Rule |
-| --- | --- |
-| `W010` | Repeated entries in `directions` |
-| `W011` | A name used by more than one node |
-| `W012` | A node with no neighbour within range on either axis |
-| `W013` | A node with no exit directions — an AGV that arrives cannot leave |
-| `W014` | A direction pointing where there is no neighbour |
-| `W015` | A lane no AGV can drive in either direction |
-| `W016` | A charger with no neighbour on the plug side, so nothing can dock |
-
-### Two rules deliberately *not* implemented
-
-- **Charger departure headings.** `CHRG1` reverses in from the West and leaves
-  to the South. Requiring the outbound heading to mirror the plug direction
-  would flag a charger that works perfectly well.
-- **Anything inferring a chute's surroundings.** One sample is not a convention.
-
----
-
-## Layout
-
-```
-shared/    Map types, orientation, edge geometry, validation, serialisation
-server/    Express API and the map store
-client/    React editor
+```bat
+git status
+git diff --stat
+git remote -v
 ```
 
-`shared/` is imported by both sides at its TypeScript source rather than through
-a build artefact, so the domain layer needs no separate compile step and a
-change to a validation rule hot-reloads in the editor.
+For this update, stage the replacement files:
 
-### Notes on the implementation
+```bat
+git add README.md Dockerfile shared/src/orientation.ts shared/src/__tests__/geometry.test.ts shared/src/__tests__/validate.test.ts client/src/state/mapReducer.ts client/src/__tests__/mapReducer.test.ts server/src/app.ts server/src/__tests__/api.test.ts
+git diff --cached --stat
+git commit -m "Follow assessment compass convention and update submission instructions"
+git push assessment main
+```
 
-**Lane occlusion.** Two aligned nodes within `maxNeighborDistance` are only
-neighbours if no third node sits between them. This is load-bearing: the sample
-map's `x=1000` column has nodes at `y=2700` and `y=4110`, 1410mm apart and so
-inside the 1500mm limit, with `y=3405` between them. Without the rule the editor
-draws a phantom lane straight through an existing node. Sorting each line and
-keeping consecutive pairs enforces it for free.
-
-**SVG, not canvas.** Nodes are real DOM elements, so hit-testing, hover,
-focus and accessible labels come for free, and pan/zoom/rotate is one transform
-on a group. At 58 nodes and 75 lanes there is no reason to reach for canvas.
-
-**Interaction maths is pure.** `client/src/lib/viewport.ts` implements the
-affine transform with plain arithmetic rather than `getScreenCTM`, so cursor-
-anchored zoom and fixed-point rotation are unit-tested without a browser.
-
-**Drags are one undo step.** A pointer move fires dozens of times; the reducer
-coalesces after the first, so one drag is one entry in the history.
-
-**Numeric fields commit on blur or Enter, never per keystroke.** Typing "1000"
-passes through 1 and 10, each a legal position that would relocate the node and
-rebuild the lane graph mid-edit.
-
-**File writes are atomic.** The store writes to a temporary file and renames it
-over the target. The map is the only copy of the operator's work, so a
-half-written file is the worst available outcome.
-
-**No webfont.** The deliverable must render correctly on a machine with no
-internet access, and a blocked font request would drop the coordinate readout
-into a fallback with proportional digits. A system stack with tabular numerals
-is the part that actually matters.
-
----
-
-## Requirements checklist
-
-| Requirement | Status |
-| --- | --- |
-| 1. Built on `debian:bullseye` | Yes. Node 20 from the official tarball, checksum verified |
-| 2. React + TypeScript editor for the format | Yes. All properties editable: `x`, `y`, `code`, `directions`, `charger`, `chute`, `name` |
-| 3. HTTP server with a well-designed API | Yes. REST over Express, `ETag`/`If-Match` concurrency, validation on write |
-| 4. Automated tests, front and back | Yes. Three suites, run in the image build |
-| 5. Bonus: zoom, rotate, drag-and-drop | Yes. Cursor-anchored zoom, arbitrary rotation with upright labels, snapping node drag |
-
----
-
-## Known limitations
-
-- **Single-writer assumption.** `ETag`/`If-Match` catches a conflict but does
-  not merge; the loser reloads. Real collaboration needs per-node operations
-  and a CRDT or a lock, which is a different design.
-- **Whole-document saves.** Fine at this size. A map of 50,000 nodes would want
-  a diff-based endpoint and a spatial index for the neighbour computation, which
-  is currently `O(n log n)` per line but recomputed on every edit.
-- **No authentication.** There is no user model, so anyone who can reach the
-  port can rewrite the map.
-- **Rotation is view-only.** It turns the camera, not the map data. Rotating
-  coordinates would change which nodes are axis-aligned and so destroy lanes.
-- **No image underlay.** A real floor map would be traced over a site plan.
-##end here 
+The push command uses the previously reported `assessment` remote and `main` branch. Confirm `git remote -v` points to the intended private repository before pushing. If the remote name differs, use the actual remote name. Keep the existing `.git` directory when replacing files; do not initialize a second repository.

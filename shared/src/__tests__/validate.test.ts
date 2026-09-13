@@ -80,7 +80,7 @@ describe('parseMapDocument', () => {
 describe('validateMap errors', () => {
   const wrap = (nodes: AgvMap['nodes'], maxNeighborDistance = 1500): AgvMap => ({
     maxNeighborDistance,
-    nodes,
+    nodes: nodes.map((node) => ({ ...node, x: node.y, y: -node.x })),
   });
 
   it('requires a positive whole maxNeighborDistance', () => {
@@ -130,7 +130,7 @@ describe('validateMap errors', () => {
 describe('validateMap warnings', () => {
   const wrap = (nodes: AgvMap['nodes'], maxNeighborDistance = 1500): AgvMap => ({
     maxNeighborDistance,
-    nodes,
+    nodes: nodes.map((node) => ({ ...node, x: node.y, y: -node.x })),
   });
 
   it('flags an isolated node', () => {
@@ -226,7 +226,7 @@ describe('validateMap warnings', () => {
 
 describe('the sample map', () => {
   it('has no errors under the default orientation', () => {
-    const result = validateMap(sampleMap, ORIENTATIONS.mapData);
+    const result = validateMap(sampleMap);
     expect(result.errors).toEqual([]);
     expect(isValid(result)).toBe(true);
   });

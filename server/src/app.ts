@@ -20,7 +20,7 @@ export interface AppOptions {
   clientDir?: string;
 }
 
-/** `?orientation=mapData|specText`, defaulting to the sample map's convention. */
+/** `?orientation=mapData|specText`, defaulting to the assignment's North = +X, West = +Y convention. */
 function readOrientation(request: Request) {
   const raw = request.query.orientation;
   return orientationById(typeof raw === 'string' ? (raw as OrientationId) : undefined);

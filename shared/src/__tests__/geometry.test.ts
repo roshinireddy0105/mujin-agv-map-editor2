@@ -18,6 +18,12 @@ import {
 const sampleMap = sample.map as AgvMap;
 
 describe('orientation', () => {
+  it('uses the written assignment headings when no orientation is supplied', () => {
+    expect(directionBetween({ x: 0, y: 0 }, { x: 800, y: 0 })).toBe('North');
+    expect(directionBetween({ x: 0, y: 0 }, { x: 0, y: 800 })).toBe('West');
+    expect(directionBetween({ x: 0, y: 0 }, { x: -800, y: 0 })).toBe('South');
+    expect(directionBetween({ x: 0, y: 0 }, { x: 0, y: -800 })).toBe('East');
+  });
   it('renders the compass upright whichever convention is active', () => {
     // The invariant the whole rendering layer depends on: no component needs to
     // know which convention is in use, because North is always screen-up.
@@ -139,7 +145,7 @@ describe('computeEdges', () => {
     const edges = computeEdges(
       map([
         { x: 0, y: 0, code: 1, directions: ['North'] },
-        { x: 0, y: 800, code: 2, directions: ['South'] },
+        { x: 800, y: 0, code: 2, directions: ['South'] },
       ]),
     );
     expect(edges).toHaveLength(1);
@@ -201,7 +207,7 @@ describe('computeEdges', () => {
     const edges = computeEdges(
       map([
         { x: 0, y: 0, code: 1, directions: ['North'] },
-        { x: 0, y: 800, code: 2 },
+        { x: 800, y: 0, code: 2 },
       ]),
     );
     expect(edges[0].passableAB).toBe(true);

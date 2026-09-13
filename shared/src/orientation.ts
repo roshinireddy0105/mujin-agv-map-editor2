@@ -1,30 +1,8 @@
 import { Direction } from './types';
 
 /**
- * The assignment text and the supplied sample map disagree about which way the
- * compass points, so the convention is an explicit, switchable choice rather
- * than a constant buried in the rendering code.
- *
- * The brief says: "the North direction is pointing to positive X on the map,
- * and the West direction is pointing to positive Y".
- *
- * The sample map's own data says otherwise. Scoring all eight possible
- * compass-to-axis mappings against the 73 direction annotations in the sample:
- *
- *   North=+X, West=+Y (as written)   20 directions point at no neighbour
- *   North=+Y, East=+X                 0 directions point at no neighbour
- *
- * Two further independent checks agree with North=+Y:
- *
- *   - Both chargers (CHRG1, plug West; CHRG2, plug South) have a neighbour on
- *     the plug side, which is where the AGV must reverse in from. Under the
- *     literal reading neither does.
- *   - The single chute ejects its payload onto empty floor rather than into an
- *     occupied node.
- *
- * So `mapData` is the default and `specText` is kept available and tested. If
- * the brief's wording is the authority for your fleet, switch it in the editor
- * header; nothing else in the codebase needs to change.
+ * Follow the assessment's North = +X, West = +Y convention by default.
+ * The alternate sample-data interpretation remains available for comparison.
  */
 export type OrientationId = 'mapData' | 'specText';
 
@@ -70,7 +48,7 @@ export const OPPOSITE: Record<Direction, Direction> = {
 const mapData: Orientation = {
   id: 'mapData',
   label: 'North = +Y',
-  note: 'Matches the sample map: all 73 direction annotations resolve to a real neighbour.',
+  note: 'Alternate convention: North = +Y, East = +X.',
   vectors: {
     North: { dx: 0, dy: 1 },
     South: { dx: 0, dy: -1 },
@@ -85,7 +63,7 @@ const mapData: Orientation = {
 const specText: Orientation = {
   id: 'specText',
   label: 'North = +X',
-  note: 'The brief as written. Leaves 20 directions in the sample map pointing at empty floor.',
+  note: 'Assignment convention: North = +X, West = +Y. North is shown upward.',
   vectors: {
     North: { dx: 1, dy: 0 },
     South: { dx: -1, dy: 0 },
@@ -98,7 +76,7 @@ const specText: Orientation = {
 
 export const ORIENTATIONS: Record<OrientationId, Orientation> = { mapData, specText };
 
-export const DEFAULT_ORIENTATION: Orientation = mapData;
+export const DEFAULT_ORIENTATION: Orientation = specText;
 
 export function orientationById(id: OrientationId | undefined): Orientation {
   return (id && ORIENTATIONS[id]) || DEFAULT_ORIENTATION;

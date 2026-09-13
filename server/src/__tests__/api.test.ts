@@ -17,7 +17,7 @@ function smallMap(): AgvMap {
     maxNeighborDistance: 1500,
     nodes: [
       { x: 0, y: 0, code: 1, directions: ['North'] },
-      { x: 0, y: 800, code: 2, directions: ['South'] },
+      { x: 800, y: 0, code: 2, directions: ['South'] },
     ],
   };
 }
@@ -85,7 +85,7 @@ describe('PUT /api/map', () => {
       maxNeighborDistance: 1500,
       nodes: [
         { x: 0, y: 0, code: 1, directions: ['North', 'East'] },
-        { x: 0, y: 800, code: 2, directions: ['South'] },
+        { x: 800, y: 0, code: 2, directions: ['South'] },
       ],
     };
     const response = await request(app).put('/api/map').send({ map }).expect(200);
@@ -199,7 +199,7 @@ describe('POST /api/map/validate', () => {
 
     expect(response.body.errors).toEqual([]);
     expect(response.body.stats).toMatchObject({
-      orientation: 'mapData',
+      orientation: 'specText',
       nodeCount: 58,
       laneCount: 75,
       isolatedNodeCount: 0,
@@ -210,14 +210,14 @@ describe('POST /api/map/validate', () => {
   it('honours the orientation query parameter', async () => {
     const { app } = build();
     const response = await request(app)
-      .post('/api/map/validate?orientation=specText')
+      .post('/api/map/validate?orientation=mapData')
       .send({ map: sampleMap() })
       .expect(200);
 
-    expect(response.body.stats.orientation).toBe('specText');
+    expect(response.body.stats.orientation).toBe('mapData');
     expect(
       response.body.warnings.filter((issue: { code: string }) => issue.code === 'W014'),
-    ).toHaveLength(20);
+    ).toHaveLength(0);
   });
 
   it('does not persist anything', async () => {
